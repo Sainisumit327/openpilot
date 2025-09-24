@@ -76,7 +76,7 @@ class SelfdriveD(CruiseHelper):
     self.excessive_actuation = self.params.get("Offroad_ExcessiveActuation") is not None
 
     # Setup sockets
-    self.pm = messaging.PubMaster(['selfdriveState', 'onroadEvents'] + ['selfdriveStateSP', 'onroadEventsSP'])
+    self.pm = messaging.PubMaster(['selfdriveState', 'onroadEvents'] + ['selfdriveStateSP', 'onroadEventsSP', 'e2eStatusSP'])
 
     self.gps_location_service = get_gps_location_service(self.params)
     self.gps_packets = [self.gps_location_service]
@@ -96,7 +96,7 @@ class SelfdriveD(CruiseHelper):
                                    'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'livePose', 'liveDelay',
                                    'managerState', 'liveParameters', 'radarState', 'liveTorqueParameters',
                                    'controlsState', 'carControl', 'driverAssistance', 'alertDebug', 'userBookmark', 'audioFeedback',
-                                   'modelDataV2SP', 'longitudinalPlanSP'] + \
+                                   'modelDataV2SP', 'longitudinalPlanSP', 'e2eStatusSP'] + \
                                    self.camera_packets + self.sensor_packets + self.gps_packets,
                                   ignore_alive=ignore, ignore_avg_freq=ignore,
                                   ignore_valid=ignore, frequency=int(1/DT_CTRL))
@@ -303,6 +303,24 @@ class SelfdriveD(CruiseHelper):
       self.events_sp.add(custom.OnroadEventSP.EventName.laneTurnLeft)
     elif lane_turn_direction == custom.TurnDirection.turnRight:
       self.events_sp.add(custom.OnroadEventSP.EventName.laneTurnRight)
+
+    # Green light chime
+
+    # model_x: list[float] = self.sm['modelV2'].position.x
+    # max_idx = len(model_x) - 1
+    # lead_status: bool = self.sm['radarState'].leadOne.status
+    # isStandstill: bool = CS.standstill
+    # gasPressed: bool = CS.gasPressed
+    # if (CS.cruiseState.enabled
+    #         and isStandstill
+    #         and model_x[max_idx] > 30
+    #         and not lead_status
+    #         and not gasPressed):
+    #   self.events_sp.add(custom.OnroadEventSP.EventName.e2eChime)
+
+    if self.sm.updated['e2eStatusSP']:
+      if self.sm['e2eStatusSP'].greenLightAlert:
+        self.events_sp.add(custom.OnroadEventSP.EventName.e2eChime)
 
     for i, pandaState in enumerate(self.sm['pandaStates']):
       # All pandas must match the list of safetyConfigs, and if outside this list, must be silent or noOutput
@@ -565,6 +583,31 @@ class SelfdriveD(CruiseHelper):
       ce_send_sp.onroadEventsSP.events = self.events_sp.to_msg()
       self.pm.send('onroadEventsSP', ce_send_sp)
     self.events_sp_prev = self.events_sp.names.copy()
+
+    # E2EStatusSP
+    e2estatus_sp_msg = messaging.new_message('e2eStatusSP')
+    e2estatus_sp_msg.valid = True
+    e2estatus_sp = e2estatus_sp_msg.e2eStatusSP
+    e2estatus_sp.greenLightAlert = False
+    e2estatus_sp.leadDepartAlert = False
+    model_x: list[float] = self.sm['modelV2'].position.x
+    max_idx = len(model_x) - 1
+    lead_status: bool = self.sm['radarState'].leadOne.status
+    isStandstill: bool = CS.standstill
+    gasPressed: bool = CS.gasPressed
+    if (CS.cruiseState.enabled
+            and isStandstill
+            and model_x[max_idx] > 30
+            and not lead_status
+            and not gasPressed):
+      e2estatus_sp.greenLightAlert = True
+    elif (CS.cruiseState.enabled
+          and isStandstill
+          and model_x[max_idx] > 30
+          and lead_status
+          and not gasPressed):
+      e2estatus_sp.leadDepartAlert = True
+    self.pm.send('e2eStatusSP', e2estatus_sp_msg)
 
   def step(self):
     CS = self.data_sample()

@@ -11,7 +11,8 @@
 #include "selfdrive/ui/qt/util.h"
 
 
-HudRendererSP::HudRendererSP() {}
+HudRendererSP::HudRendererSP() {
+}
 
 void HudRendererSP::updateState(const UIState &s) {
   HudRenderer::updateState(s);
@@ -27,6 +28,7 @@ void HudRendererSP::updateState(const UIState &s) {
   const auto car_params = sm["carParams"].getCarParams();
   const auto lp_sp = sm["longitudinalPlanSP"].getLongitudinalPlanSP();
   const auto lmd = sm["liveMapDataSP"].getLiveMapDataSP();
+  //const auto &model = sm["modelV2"].getModelV2();
 
   float speedConv = is_metric ? MS_TO_KPH : MS_TO_MPH;
   speedLimit = lp_sp.getSpeedLimit().getResolver().getSpeedLimit() * speedConv;
@@ -103,6 +105,28 @@ void HudRendererSP::updateState(const UIState &s) {
   smartCruiseControlVisionActive = lp_sp.getSmartCruiseControl().getVision().getActive();
   smartCruiseControlMapEnabled = lp_sp.getSmartCruiseControl().getMap().getEnabled();
   smartCruiseControlMapActive = lp_sp.getSmartCruiseControl().getMap().getActive();
+
+  /*const auto &model_x = model.getPosition().getX();
+  const auto max_idx = model_x.size() - 1;
+  if (isStandstill
+    and model_x[max_idx] > 30
+    and lead_status == false
+    and !car_state.getGasPressed()
+    ) {
+    greenLightChime = true;
+  } else {
+    greenLightChime = false;
+  }
+
+  MessageBuilder msg_builder;
+  auto e2eStatusSP = msg_builder.initEvent().initE2eStatusSP();
+  e2eStatusSP.setGreenLight(greenLightChime);
+  pm->send("e2eStatusSP", msg_builder);*/
+
+  if (sm.updated("e2eStatusSP")) {
+    greenLightAlert = sm["e2eStatusSP"].getE2eStatusSP().getGreenLightAlert();
+    leadDepartAlert = sm["e2eStatusSP"].getE2eStatusSP().getLeadDepartAlert();
+  }
 }
 
 void HudRendererSP::draw(QPainter &p, const QRect &surface_rect) {
@@ -177,6 +201,17 @@ void HudRendererSP::draw(QPainter &p, const QRect &surface_rect) {
 
     // Road Name
     drawRoadName(p, surface_rect);
+
+    if (greenLightAlert or leadDepartAlert) {
+      QString str = greenLightAlert ? "MOVE BITCH\n IT's GREEN" : "MOVE BITCH\n LEAD BE GONE";
+      p.setFont(InterFont(95, QFont::Bold));
+      p.setPen(QColor(50, 168, 82, 255));
+      QFontMetrics fm(p.font());
+      QRect timerTextRect = fm.boundingRect(surface_rect, Qt::TextWordWrap, str);
+      timerTextRect.moveCenter({surface_rect.center().x(), surface_rect.center().y()});
+      p.drawRect(timerTextRect);
+      p.drawText(timerTextRect, Qt::AlignCenter | Qt::TextWordWrap, str);
+    }
   }
 }
 

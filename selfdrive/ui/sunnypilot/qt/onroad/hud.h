@@ -87,4 +87,6 @@ private:
   QString roadNameStr;
   cereal::LongitudinalPlanSP::SpeedLimit::AssistState speedLimitAssistState;
   int speedLimitAssistFrame;
+  bool greenLightAlert;
+  bool leadDepartAlert;
 };

@@ -293,6 +293,7 @@ struct OnroadEventSP @0xda96579883444c35 {
     speedLimitActive @20;
     speedLimitChanged @21;
     speedLimitPending @22;
+    e2eChime @23;
   }
 }
 
@@ -406,7 +407,9 @@ struct ModelDataV2SP @0xa1680744031fdb2d {
     turnRight @2;
   }
 
-struct CustomReserved10 @0xcb9fd56c7057593a {
+struct E2eStatusSP @0xcb9fd56c7057593a {
+  greenLightAlert @0 :Bool;
+  leadDepartAlert @1 :Bool;
 }
 
 struct CustomReserved11 @0xc2243c65e0340384 {
