@@ -1,0 +1,19 @@
+name: Build Sim Release (dev-c3)
+
+on:
+  push:
+    branches: [ dev-c3 ]   # only runs when you push/sync dev-c3
+  workflow_dispatch:       # lets you trigger it manually
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Apply dev-c3 patch
+      run: |
+        git apply .github/patches/fix-devc3.patch || echo "Patch already applied"
+
