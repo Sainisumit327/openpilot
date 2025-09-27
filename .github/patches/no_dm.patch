@@ -1,0 +1,38 @@
+name: Build Sim Release
+
+on:
+  push:
+    branches: [ master ]   # replace with your branch name
+  workflow_dispatch:      # manual trigger from Actions tab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Apply no_dm patch
+      run: |
+        git apply .github/patches/no_dm.patch || echo "Patch already applied"
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Sanity compile
+      run: |
+        python -m compileall selfdrive
+
+    - name: Create tarball
+      run: |
+        git archive --format=tar.gz -o sunnypilot-sim.tar.gz HEAD
+
+    - name: Upload release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: sunnypilot-sim.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
