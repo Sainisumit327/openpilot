@@ -1,0 +1,44 @@
+--- a/selfdrive/monitoring/dmonitoringd.py
++++ b/selfdrive/monitoring/dmonitoringd.py
+@@ -41,10 +41,36 @@
+     if valid:
+       DM.run_step(sm)
+
+-    # publish
+-    dat = DM.get_state_packet(valid=valid)
+-    pm.send('driverMonitoringState', dat)
+-
+-    sp_dat = DM.get_sp_state_packet(valid=valid)
+-    pm.send('driverMonitoringStateSP', sp_dat)
++    # publish
++    dat = DM.get_state_packet(valid=valid)
++    try:
++      dms = dat.driverMonitoringState
++      dms.faceDetected = True
++      dms.isDistracted = False
++      dms.distractedType = 0
++      dms.awarenessStatus = 1.0
++      dms.awarenessActive = 1.0
++      dms.awarenessPassive = 1.0
++      dms.isActiveMode = True
++      dms.isRHD = params.get_bool("IsRhdDetected")
++      dms.events = []
++    except Exception:
++      pass
++    pm.send('driverMonitoringState', dat)
++
++    sp_dat = DM.get_sp_state_packet(valid=valid)
++    try:
++      dms_sp = sp_dat.driverMonitoringStateSP
++      dms_sp.faceDetected = True
++      dms_sp.isDistracted = False
++      dms_sp.distractedType = 0
++      dms_sp.awarenessStatus = 1.0
++      dms_sp.awarenessActive = 1.0
++      dms_sp.awarenessPassive = 1.0
++      dms_sp.isActiveMode = True
++      dms_sp.isRHD = params.get_bool("IsRhdDetected")
++      dms_sp.events = []
++    except Exception:
++      pass
++    pm.send('driverMonitoringStateSP', sp_dat)
