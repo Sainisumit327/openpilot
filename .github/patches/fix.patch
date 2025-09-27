@@ -1,0 +1,24 @@
+--- a/selfdrive/monitoring/dmonitoringd.py
++++ b/selfdrive/monitoring/dmonitoringd.py
+@@ -92,7 +92,19 @@
+     # publish
+-    dat = DM.get_state_packet(valid=valid)
+-    pm.send('driverMonitoringState', dat)
++    dat = DM.get_state_packet(valid=valid)
++
++    # --- SIM BYPASS: force attentive driver ---
++    try:
++      dms = dat.driverMonitoringState
++      dms.faceDetected = True
++      dms.isDistracted = False
++      dms.distractedType = 0
++      dms.awarenessStatus = 1.0
++      dms.awarenessActive = 1.0
++      dms.awarenessPassive = 1.0
++      dms.isActiveMode = True
++      dms.isRHD = params.get_bool("IsRhdDetected")
++      dms.events = []
++    except Exception:
++      pass
++    # --- END SIM BYPASS ---
++    pm.send('driverMonitoringState', dat)
