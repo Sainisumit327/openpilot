@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 import cereal.messaging as messaging
 from openpilot.common.params import Params
 from openpilot.common.realtime import config_realtime_process
@@ -6,19 +7,25 @@ from openpilot.selfdrive.monitoring.helpers import DriverMonitoring
 
 
 def dmonitoringd_thread():
-  # keep realtime config so process manager doesn’t complain
   config_realtime_process([0, 1, 2, 3], 5)
 
   params = Params()
   pm = messaging.PubMaster(['driverMonitoringState'])
-  sm = messaging.SubMaster(['driverStateV2', 'liveCalibration', 'carState', 'selfdriveState', 'modelV2',
-                            'carControl'], poll='driverStateV2')
+  sm = messaging.SubMaster(['driverStateV2', 'liveCalibration', 'carState',
+                            'selfdriveState', 'modelV2', 'carControl'],
+                           poll='driverStateV2')
 
-  # keep object init (unused now, just for stability)
-  DM = DriverMonitoring(rhd_saved=params.get_bool("IsRhdDetected"), always_on=params.get_bool("AlwaysOnDM"))
+  # keep dummy init
+  DM = DriverMonitoring(rhd_saved=params.get_bool("IsRhdDetected"),
+                        always_on=params.get_bool("AlwaysOnDM"))
 
   while True:
     sm.update()
+
+    if not sm.updated['driverStateV2']:
+      # wait until new data comes in
+      time.sleep(0.05)
+      continue
 
     # build new message
     dat = messaging.new_message('driverMonitoringState')
@@ -41,7 +48,6 @@ def dmonitoringd_thread():
     dms.isActiveMode = True
     dms.isRHD = False
 
-    # publish
     pm.send('driverMonitoringState', dat)
 
 
